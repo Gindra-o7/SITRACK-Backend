@@ -1,36 +1,33 @@
-import { Request, Response } from 'express';
-import { ProfileService } from '../services/profile.services';
+import {Request, Response} from 'express';
+import {UserService} from '../services/profile.services';
 
-const profileService = new ProfileService();
+export class UserController {
+    private userService: UserService;
 
-export class ProfileController {
-    async getProfile(req: Request, res: Response) {
+    constructor() {
+        this.userService = new UserService();
+    }
+
+    getProfile = async (req: Request, res: Response): Promise<void> => {
         try {
-            const userId = req.user.id; // Assuming you have user info in request
-            const userRoles = req.user.roles;
+            const userId = req.params.userId;
 
-            let profile;
-            if (userRoles.includes('mahasiswa')) {
-                profile = await profileService.getStudentProfile(userId);
-            } else if (userRoles.includes('dosen')) {
-                profile = await profileService.getLecturerProfile(userId);
-            } else if (userRoles.includes('pembimbing_instansi')) {
-                profile = await profileService.getIndustryAdvisorProfile(userId);
+            if (!userId) {
+                res.status(400).json({error: 'User ID is required'});
+                return;
             }
 
-            res.json(profile);
-        } catch (error) {
-            res.status(500).json({ error: 'Failed to fetch profile' });
-        }
-    }
+            const userProfile = await this.userService.getUserProfile(userId);
 
-    async updateProfile(req: Request, res: Response) {
-        try {
-            const userId = req.user.id;
-            const updatedProfile = await profileService.updateProfile(userId, req.body);
-            res.json(updatedProfile);
+            if (!userProfile) {
+                res.status(404).json({error: 'User not found'});
+                return;
+            }
+
+            res.json(userProfile);
         } catch (error) {
-            res.status(500).json({ error: 'Failed to update profile' });
+            console.error('Error fetching user profile:', error);
+            res.status(500).json({error: 'Internal server error'});
         }
-    }
+    };
 }

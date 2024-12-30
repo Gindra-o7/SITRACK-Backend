@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { UpdateDocumentStatusDTO } from '../types/document.types';
+import {ApiError} from "../utils/apiError";
 
 export class DocumentService {
     private prisma: PrismaClient;
@@ -26,10 +27,11 @@ export class DocumentService {
         });
 
         if (!document) {
-            throw new Error('Document not found');
+            throw new ApiError('Document not found', 404);
         }
 
         const [history, updatedDoc] = await this.prisma.$transaction([
+            // Create document history
             this.prisma.dokumenHistory.create({
                 data: {
                     dokumenId: document.id,
@@ -41,24 +43,20 @@ export class DocumentService {
                     version: (document.history.length || 0) + 1
                 }
             }),
+            // Update document status and comment
             this.prisma.dokumen.update({
                 where: { id },
-                data: { status: data.status }
+                data: {
+                    status: data.status,
+                    komentar: data.komentar || null  // Update komentar if provided, otherwise set to null
+                }
             })
         ]);
 
-        await this.prisma.dokumenReview.create({
-            data: {
-                dokumenId: id,
-                historyId: history.id,
-                koordinatorId: userId,
-                status: data.status,
-                komentar: data.komentar,
-                nim: document.nim,
-                userId: document.userId
-            }
-        });
-
-        return updatedDoc;
+        return {
+            ...updatedDoc,
+            history,
+            message: `Document status updated to ${data.status}${data.komentar ? ' with comment' : ''}`
+        };
     }
 }

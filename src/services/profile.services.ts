@@ -1,109 +1,60 @@
-import prisma from "../configs/prisma.configs"
+import { PrismaClient } from '@prisma/client';
+import { UserProfile } from '../types/profile.types';
 
-export class ProfileService {
-    async getStudentProfile(userId: string) {
-        return await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                mahasiswa: {
-                    include: {
-                        mahasiswaKp: true
-                    }
-                }
-            }
-        });
+export class UserService {
+    private prisma: PrismaClient;
+
+    constructor() {
+        this.prisma = new PrismaClient();
     }
 
-    async getLecturerProfile(userId: string) {
-        return await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                dosen: true
-            }
-        });
-    }
-
-    async getIndustryAdvisorProfile(userId: string) {
-        return await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                pembimbingInstansi: true
-            }
-        });
-    }
-
-    async updateProfile(userId: string, data: any) {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                mahasiswa: true,
-                dosen: true,
-                pembimbingInstansi: true
-            }
-        });
-
-        if (!user) throw new Error('User not found');
-
-        return await prisma.$transaction(async (tx) => {
-            // Update base user info
-            await tx.user.update({
+    async getUserProfile(userId: string): Promise<UserProfile | null> {
+        try {
+            const user = await this.prisma.user.findUnique({
                 where: { id: userId },
-                data: {
-                    nama: data.nama,
-                    email: data.email,
-                    photoPath: data.photoPath
-                }
+                include: {
+                    userRoles: {
+                        include: {
+                            role: true,
+                        },
+                    },
+                    mahasiswa: true,
+                    dosen: true,
+                    pembimbingInstansi: true,
+                },
             });
 
-            // Update role-specific info
-            if (user.mahasiswa) {
-                await tx.mahasiswa.update({
-                    where: { userId },
-                    data: {
-                        noHp: data.noHp,
-                        semester: data.semester
-                    }
-                });
+            if (!user) {
+                return null;
             }
 
-            if (user.dosen) {
-                await tx.dosen.update({
-                    where: { userId },
-                    data: {
-                        nip: data.nip
-                    }
-                });
-            }
-
-            if (user.pembimbingInstansi) {
-                await tx.pembimbingInstansi.update({
-                    where: { userId },
-                    data: {
-                        instansi: data.instansi,
-                        jabatan: data.jabatan,
-                        noTelpon: data.noTelpon
-                    }
-                });
-            }
-
-            return await this.getProfileByUserId(userId);
-        });
-    }
-
-    private async getProfileByUserId(userId: string) {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                mahasiswa: {
-                    include: {
-                        mahasiswaKp: true
-                    }
-                },
-                dosen: true,
-                pembimbingInstansi: true
-            }
-        });
-
-        return user;
+            return {
+                id: user.id,
+                email: user.email,
+                nama: user.nama,
+                photoPath: user.photoPath || undefined,
+                createdAt: user.createdAt,
+                roles: user.userRoles.map(ur => ur.role.name),
+                mahasiswa: user.mahasiswa ? {
+                    nim: user.mahasiswa.nim,
+                    noHp: user.mahasiswa.noHp || undefined,
+                    semester: user.mahasiswa.semester || undefined,
+                } : undefined,
+                dosen: user.dosen ? {
+                    nip: user.dosen.nip,
+                    isPembimbing: user.dosen.isPembimbing,
+                    isPenguji: user.dosen.isPenguji,
+                    isKaprodi: user.dosen.isKaprodi,
+                    isKoordinator: user.dosen.isKoordinator,
+                } : undefined,
+                pembimbingInstansi: user.pembimbingInstansi ? {
+                    instansi: user.pembimbingInstansi.instansi,
+                    jabatan: user.pembimbingInstansi.jabatan || undefined,
+                    noTelpon: user.pembimbingInstansi.noTelpon || undefined,
+                } : undefined,
+            };
+        } catch (error) {
+            throw new Error('Failed to fetch user profile');
+        }
     }
 }

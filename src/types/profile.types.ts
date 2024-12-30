@@ -1,32 +1,25 @@
-export interface BaseProfile {
+export interface UserProfile {
     id: string;
     email: string;
     nama: string;
     photoPath?: string;
-}
-
-export interface StudentProfile extends BaseProfile {
-    nim: string;
-    noHp?: string;
-    semester?: number;
-    mahasiswaKp?: {
-        mulaiKp?: Date;
-        selesaiKp?: Date;
-        judulLaporan?: string;
-        namaInstansi?: string;
+    createdAt: Date;
+    roles: string[];
+    mahasiswa?: {
+        nim: string;
+        noHp?: string;
+        semester?: number;
     };
-}
-
-export interface LecturerProfile extends BaseProfile {
-    nip: string;
-    isPembimbing: boolean;
-    isPenguji: boolean;
-    isKaprodi: boolean;
-    isKoordinator: boolean;
-}
-
-export interface IndustryAdvisorProfile extends BaseProfile {
-    instansi: string;
-    jabatan?: string;
-    noTelpon?: string;
+    dosen?: {
+        nip: string;
+        isPembimbing: boolean;
+        isPenguji: boolean;
+        isKaprodi: boolean;
+        isKoordinator: boolean;
+    };
+    pembimbingInstansi?: {
+        instansi: string;
+        jabatan?: string;
+        noTelpon?: string;
+    };
 }

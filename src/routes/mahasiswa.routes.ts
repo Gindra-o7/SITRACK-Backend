@@ -1,6 +1,6 @@
 import express from "express";
 import {authenticateToken, authorizeRoles} from "../middlewares/auth.middlewares";
-import {getCurrentUser, MahasiswaControllers} from "../controllers/mahasiswa.controllers";
+import {getCurrentUser, MahasiswaControllers, getDashboardData} from "../controllers/mahasiswa.controllers";
 import {upload} from "../middlewares/fileUpload";
 
 const router = express.Router();
@@ -47,6 +47,13 @@ router.get(
     authenticateToken,
     authorizeRoles(['mahasiswa']),
     getCurrentUser
+)
+
+router.get(
+    "/mahasiswa/dashboard/:userId",
+    authenticateToken,
+    authorizeRoles(['mahasiswa']),
+    getDashboardData
 )
 
 export default router;

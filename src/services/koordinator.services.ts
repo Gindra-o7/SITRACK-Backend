@@ -115,18 +115,6 @@ export class KoordinatorServices {
             }
         });
 
-        await prisma.dokumenReview.create({
-            data: {
-                dokumenId: dokumen.id,
-                historyId: history.id,
-                koordinatorId,
-                status,
-                komentar,
-                nim: dokumen.nim,
-                userId: dokumen.userId
-            }
-        });
-
         return prisma.dokumen.update({
             where: { id },
             data: { status }

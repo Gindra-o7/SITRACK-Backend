@@ -1,19 +1,15 @@
 import { Router } from 'express';
-import { ProfileController } from '../controllers/profile.controllers';
+import { UserController } from '../controllers/profile.controllers';
 import {authenticateToken} from "../middlewares/auth.middlewares";
 
 const router = Router();
-const profileController = new ProfileController();
+const userController = new UserController();
 
 router.get(
-    '/profile',
+    '/profile/:userId',
     authenticateToken,
-    profileController.getProfile
+    userController.getProfile
 );
-router.put(
-    '/profile',
-    authenticateToken,
-    profileController.updateProfile
-);
+
 
 export default router;

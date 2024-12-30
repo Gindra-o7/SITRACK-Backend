@@ -3,6 +3,18 @@ import prisma from "../configs/prisma.configs";
 import { PembimbingInstansiService } from '../services/pembimbingInstansi.services';
 import { ApiError } from '../utils/apiError';
 
+interface InputNilaiRequest extends Request {
+    body: {
+        nilai: number;
+    };
+    params: {
+        nim: string;
+    };
+    user?: {
+        id: string;
+    };
+}
+
 export class PembimbingInstansiController {
     private service: PembimbingInstansiService;
 
@@ -53,11 +65,15 @@ export class PembimbingInstansiController {
         }
     };
 
-    inputNilai = async (req: Request, res: Response) => {
+    inputNilai = async (req: InputNilaiRequest, res: Response) => {
         try {
             const { nim } = req.params;
             const { nilai } = req.body;
             const pembimbingId = req.user?.id;
+
+            if (!pembimbingId) {
+                throw new ApiError('Unauthorized', 401);
+            }
 
             const result = await this.service.inputNilai(pembimbingId, nim, nilai);
             res.json(result);
@@ -65,6 +81,7 @@ export class PembimbingInstansiController {
             if (error instanceof ApiError) {
                 res.status(error.statusCode).json({ message: error.message });
             } else {
+                console.error('Error in inputNilai:', error);
                 res.status(500).json({ message: 'Internal server error' });
             }
         }

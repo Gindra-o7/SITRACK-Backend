@@ -210,7 +210,7 @@ model JadwalSeminar {
 
 model Nilai {
   id                      String    @id @default(uuid())
-  jadwalSeminarId         String    @unique
+  jadwalSeminarId         String?
   nilaiPembimbing         Float?
   nilaiPenguji            Float?
   nilaiPembimbingInstansi Float?
@@ -225,10 +225,12 @@ model Nilai {
   updatedAt               DateTime? @updatedAt
   nim                     String
 
-  jadwalSeminar      JadwalSeminar       @relation(fields: [jadwalSeminarId], references: [id])
+  jadwalSeminar      JadwalSeminar?      @relation(fields: [jadwalSeminarId], references: [id])
   mahasiswa          Mahasiswa           @relation(fields: [nim], references: [nim])
   dosenPembimbing    Dosen?              @relation("NilaiPembimbing", fields: [dosenPembimbingId], references: [id])
   dosenPenguji       Dosen?              @relation("NilaiPenguji", fields: [dosenPengujiId], references: [id])
   pembimbingInstansi PembimbingInstansi? @relation(fields: [pembimbingInstansiId], references: [id])
   finalisasiOleh     Dosen?              @relation("FinalisasiNilai", fields: [finalizedBy], references: [id])
+
+  @@unique([jadwalSeminarId])
 }

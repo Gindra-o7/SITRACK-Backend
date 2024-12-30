@@ -105,6 +105,9 @@ export class PembimbingInstansiService {
             where: {
                 nim,
                 pembimbingInstansiId: pembimbingId
+            },
+            include: {
+                mahasiswa: true
             }
         });
 
@@ -112,38 +115,40 @@ export class PembimbingInstansiService {
             throw new ApiError('Student not found or not assigned to this supervisor', 404);
         }
 
-        // Get the latest seminar schedule
-        const jadwalSeminar = await this.prisma.jadwalSeminar.findFirst({
+        // Check if nilai already exists for this student and supervisor
+        const existingNilai = await this.prisma.nilai.findFirst({
             where: {
                 nim,
-                status: 'completed'
-            },
-            orderBy: {
-                tanggal: 'desc'
+                pembimbingInstansiId: pembimbingId,
             }
         });
 
-        if (!jadwalSeminar) {
-            throw new ApiError('No completed seminar found for this student', 404);
+        if (existingNilai) {
+            // Update existing nilai
+            const updatedNilai = await this.prisma.nilai.update({
+                where: {
+                    id: existingNilai.id
+                },
+                data: {
+                    nilaiPembimbingInstansi: nilaiInput,
+                    updatedAt: new Date()
+                }
+            });
+            return updatedNilai;
         }
 
-        // Update or create nilai
-        const nilai = await this.prisma.nilai.upsert({
-            where: {
-                jadwalSeminarId: jadwalSeminar.id
-            },
-            update: {
-                nilaiPembimbingInstansi: nilaiInput,
-                pembimbingInstansiId: pembimbingId
-            },
-            create: {
-                jadwalSeminarId: jadwalSeminar.id,
+        // Create new nilai if it doesn't exist
+        const newNilai = await this.prisma.nilai.create({
+            data: {
+                nim,
                 nilaiPembimbingInstansi: nilaiInput,
                 pembimbingInstansiId: pembimbingId,
-                nim
+                jadwalSeminarId: null as any, // Since jadwalSeminarId is required in schema but we don't need it here
+                createdAt: new Date(),
+                updatedAt: new Date()
             }
         });
 
-        return nilai;
+        return newNilai;
     }
 }

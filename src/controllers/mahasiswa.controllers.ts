@@ -164,9 +164,6 @@ export class MahasiswaControllers {
                     nim,
                     kategori: kategori as KategoriDokumen,
                 },
-                include: {
-                    reviews: true,
-                },
             });
 
             return res.status(200).json(documents);
@@ -316,5 +313,121 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         const err = error as Error; // Type assertion
         console.error('Error in getCurrentUser:', err.message);
         res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+interface DashboardResponse {
+    currentStage: 'PERSYARATAN' | 'PENDAFTARAN' | 'PASCA_SEMINAR';
+    documentsNeedingRevision: number;
+    seminarSchedule: any | null;
+    completedSteps: number;
+    totalSteps: number;
+}
+
+export const getDashboardData = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+
+        // Get mahasiswa data with expanded seminar schedule information
+        const mahasiswa = await prisma.mahasiswa.findFirst({
+            where: { userId },
+            include: {
+                dokumen: {
+                    where: {
+                        status: 'rejected'
+                    }
+                },
+                jadwalSeminar: {
+                    where: {
+                        status: {
+                            in: ['pending', 'scheduled']
+                        }
+                    },
+                    include: {
+                        dosen: {
+                            include: {
+                                user: {
+                                    select: {
+                                        nama: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    orderBy: {
+                        tanggal: 'asc'
+                    },
+                    take: 1
+                }
+            }
+        });
+
+        if (!mahasiswa) {
+            return res.status(404).json({ message: 'Mahasiswa not found' });
+        }
+
+        // Count documents by category to determine current stage
+        const documentCounts = await prisma.dokumen.groupBy({
+            by: ['kategori'],
+            where: {
+                nim: mahasiswa.nim,
+                status: 'verified'
+            },
+            _count: true
+        });
+
+        // Determine current stage
+        let currentStage: 'PERSYARATAN' | 'PENDAFTARAN' | 'PASCA_SEMINAR' = 'PERSYARATAN';
+        let completedSteps = 0;
+
+        const hasVerifiedPersyaratan = documentCounts.some(
+            count => count.kategori === 'PERSYARATAN'
+        );
+        const hasVerifiedPendaftaran = documentCounts.some(
+            count => count.kategori === 'PENDAFTARAN'
+        );
+        const hasVerifiedPascaSeminar = documentCounts.some(
+            count => count.kategori === 'PASCA_SEMINAR'
+        );
+
+        if (hasVerifiedPascaSeminar) {
+            currentStage = 'PASCA_SEMINAR';
+            completedSteps = 3;
+        } else if (hasVerifiedPendaftaran) {
+            currentStage = 'PENDAFTARAN';
+            completedSteps = 2;
+        } else if (hasVerifiedPersyaratan) {
+            currentStage = 'PENDAFTARAN';
+            completedSteps = 1;
+        }
+
+        // Format seminar schedule with additional information
+        const seminarSchedule = mahasiswa.jadwalSeminar[0]
+            ? {
+                id: mahasiswa.jadwalSeminar[0].id,
+                tanggal: mahasiswa.jadwalSeminar[0].tanggal,
+                waktuMulai: mahasiswa.jadwalSeminar[0].waktuMulai,
+                waktuSelesai: mahasiswa.jadwalSeminar[0].waktuSelesai,
+                ruangan: mahasiswa.jadwalSeminar[0].ruangan,
+                status: mahasiswa.jadwalSeminar[0].status,
+                dosenPenguji: {
+                    nama: mahasiswa.jadwalSeminar[0].dosen.user.nama,
+                    nip: mahasiswa.jadwalSeminar[0].dosen.nip
+                }
+            }
+            : null;
+
+        const response: DashboardResponse = {
+            currentStage,
+            documentsNeedingRevision: mahasiswa.dokumen.length,
+            seminarSchedule,
+            completedSteps,
+            totalSteps: 3
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

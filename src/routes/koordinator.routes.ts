@@ -4,6 +4,7 @@ import {authenticateToken, authorizeRoles} from "../middlewares/auth.middlewares
 import {JadwalController} from "../controllers/jadwal.controllers"
 import {DocumentController} from "../controllers/document.controllers"
 import {NilaiController} from "../controllers/nilai.controllers"
+import {DashboardController} from "../controllers/dashboard.controllers"
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ const koordinatorController = new KoordinatorController();
 const jadwalController = new JadwalController();
 const documentController = new DocumentController();
 const nilaiController = new NilaiController();
+const dashboardController = new DashboardController();
 
 router.post(
     "/koordinator/user",
@@ -130,5 +132,12 @@ router.get(
     authorizeRoles(['koordinator']),
     nilaiController.getNilaiById
 );
+
+router.get(
+    "/koordinator/stats",
+    authenticateToken,
+    authorizeRoles(['koordinator']),
+    dashboardController.getDashboardStats
+)
 
 export default router;
